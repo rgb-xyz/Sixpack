@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33723.286
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Sixpack", "Sixpack.vcxproj", "{E62D8B28-244B-4295-8D30-6418440A0214}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Parser.Test", "tests\Parser.Test\Parser.Test.vcxproj", "{B2556049-BE72-43FE-BFFC-17F5B45B5AC7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E62D8B28-244B-4295-8D30-6418440A0214} = {E62D8B28-244B-4295-8D30-6418440A0214}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tokenizer.Test", "tests\Tokenizer.Test\Tokenizer.Test.vcxproj", "{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E62D8B28-244B-4295-8D30-6418440A0214} = {E62D8B28-244B-4295-8D30-6418440A0214}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{F805AE5D-9761-46E9-959A-174A38FC2712}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Compiler.Test", "tests\Compiler.Test\Compiler.Test.vcxproj", "{52852B7D-A76C-4200-90A3-2A61597B1EB4}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E62D8B28-244B-4295-8D30-6418440A0214} = {E62D8B28-244B-4295-8D30-6418440A0214}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E62D8B28-244B-4295-8D30-6418440A0214}.Debug|x64.ActiveCfg = Debug|x64
+		{E62D8B28-244B-4295-8D30-6418440A0214}.Debug|x64.Build.0 = Debug|x64
+		{E62D8B28-244B-4295-8D30-6418440A0214}.Release|x64.ActiveCfg = Release|x64
+		{E62D8B28-244B-4295-8D30-6418440A0214}.Release|x64.Build.0 = Release|x64
+		{B2556049-BE72-43FE-BFFC-17F5B45B5AC7}.Debug|x64.ActiveCfg = Debug|x64
+		{B2556049-BE72-43FE-BFFC-17F5B45B5AC7}.Debug|x64.Build.0 = Debug|x64
+		{B2556049-BE72-43FE-BFFC-17F5B45B5AC7}.Release|x64.ActiveCfg = Release|x64
+		{B2556049-BE72-43FE-BFFC-17F5B45B5AC7}.Release|x64.Build.0 = Release|x64
+		{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C}.Debug|x64.ActiveCfg = Debug|x64
+		{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C}.Debug|x64.Build.0 = Debug|x64
+		{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C}.Release|x64.ActiveCfg = Release|x64
+		{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C}.Release|x64.Build.0 = Release|x64
+		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Debug|x64.ActiveCfg = Debug|x64
+		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Debug|x64.Build.0 = Debug|x64
+		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Release|x64.ActiveCfg = Release|x64
+		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B2556049-BE72-43FE-BFFC-17F5B45B5AC7} = {F805AE5D-9761-46E9-959A-174A38FC2712}
+		{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C} = {F805AE5D-9761-46E9-959A-174A38FC2712}
+		{52852B7D-A76C-4200-90A3-2A61597B1EB4} = {F805AE5D-9761-46E9-959A-174A38FC2712}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2C8C2778-527A-46C8-AC7B-4BBE25EC7D90}
+	EndGlobalSection
+EndGlobal
