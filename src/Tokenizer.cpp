@@ -15,7 +15,7 @@ static bool isDigit(const char ch) {
 
 // Note: Deliberately using hard-coded version instead of "std::isalpha" which is locale-dependent.
 static bool isLetter(const char ch) {
-    return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch == '_';
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_';
 }
 
 Token Tokenizer::getNext() {

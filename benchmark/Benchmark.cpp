@@ -1,7 +1,6 @@
 #include "Compiler.h"
 #include "Exception.h"
 #include "Program.h"
-#include "Utilities.h"
 #include <cmath>
 #include <format>
 #include <iostream>
@@ -56,14 +55,9 @@ static void test() {
     Compiler compiler;
     compiler.addFunction("sin", &std::sin);
     compiler.addFunction("cos", &std::cos);
-
-    std::cout << SOURCE;
     compiler.addSourceScript(SOURCE);
 
-    Program program = compiler.compile();
-    printSection("Compiled Program");
-    dumpProgram(program, std::cout);
-
+    Program                program      = compiler.compile();
     const Program::Address rAddress     = program.getInputAddress("r");
     const Program::Address phiAddress   = program.getInputAddress("phi");
     const Program::Address thetaAddress = program.getInputAddress("theta");
@@ -74,7 +68,6 @@ static void test() {
         }
     }
 
-    printSection("Test Bench");
     std::atomic_int activeTasks;
 
     const auto run = [&](const double r) {
@@ -137,7 +130,7 @@ static void test() {
     {
         std::vector<std::thread> threads; // poor man's thread pool
         threads.reserve(R_STEPS);
-        activeTasks = R_STEPS;
+        activeTasks = R_STEPS + 1; // +1 to prevent the actual printout
         for (int ri = 0; ri < R_STEPS; ++ri) {
             const double r = double(ri) * 10.0 / double(R_STEPS - 1);
             threads.emplace_back(run, r);
@@ -153,7 +146,7 @@ static void test() {
     for (StringPosition i = speed.size() - 3; i > 0 && i < speed.size(); i -= 3) {
         speed.insert(i, "'");
     }
-    std::cout << std::endl << "Evaluation speed: ~" << speed << " tensors per second." << std::endl;
+    std::cout << "Evaluation speed: " << speed << " tensors per second." << std::endl;
 }
 
 int main() {

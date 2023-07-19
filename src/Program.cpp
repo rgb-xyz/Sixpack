@@ -6,6 +6,17 @@
 
 SIXPACK_NAMESPACE_BEGIN
 
+// MSVC-specific optimization:
+//
+// If AVX is enabled and both "sin" and "cos" are used, the compiler will use a vectorized function
+// "__libm_avx_sincos4_" which calculates 2 sine--cosine pairs (for 2 values). Even though we need just the
+// sine or cosine, calling both will be faster because we will get 2 values in a single round.
+#if defined(_MSC_VER) && !defined(__clang__) && defined(__AVX__) && !defined(_DEBUG)
+#   define SIXPACK_ENFORCE_SINCOS_PAIR 1
+#else
+#   define SIXPACK_ENFORCE_SINCOS_PAIR 0
+#endif
+
 namespace {
 
     using ScalarOpcodeFunction = void (*)(Program::Scalar*            output,
@@ -15,167 +26,205 @@ namespace {
                                           const Program::Vector*      memory,
                                           const Program::Instruction& instruction);
 
-    static constexpr std::array<ScalarOpcodeFunction, 12> SCALAR_OPCODE_FUNCTIONS = {
+    static constexpr std::array<ScalarOpcodeFunction, 14> SCALAR_OPCODE_FUNCTIONS = {
         // Opcode::NOP
         [](Program::Scalar*, const Program::Scalar*, const Program::Instruction&) {},
         // Opcode::ADD
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.operand1] + memory[instruction.operand2];
+            *output = memory[instruction.source] + memory[instruction.operand];
         },
         // Opcode::ADD_IMM
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate + memory[instruction.operand2];
+            *output = instruction.immediate + memory[instruction.operand];
         },
         // Opcode::SUBTRACT
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.operand1] - memory[instruction.operand2];
+            *output = memory[instruction.source] - memory[instruction.operand];
         },
         // Opcode::SUBTRACT_IMM
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate - memory[instruction.operand2];
+            *output = instruction.immediate - memory[instruction.operand];
         },
         // Opcode::MULTIPLY
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.operand1] * memory[instruction.operand2];
+            *output = memory[instruction.source] * memory[instruction.operand];
         },
         // Opcode::MULTIPLY_IMM
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate * memory[instruction.operand2];
+            *output = instruction.immediate * memory[instruction.operand];
         },
         // Opcode::DIVIDE
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.operand1] / memory[instruction.operand2];
+            *output = memory[instruction.source] / memory[instruction.operand];
         },
         // Opcode::DIVIDE_IMM
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate / memory[instruction.operand2];
+            *output = instruction.immediate / memory[instruction.operand];
         },
         // Opcode::POWER
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = std::pow(memory[instruction.operand1], memory[instruction.operand2]);
-        },
-        // Opcode::SINCOS
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            const Real argument              = memory[instruction.operand2];
-            const Real sine                  = std::sin(argument);
-            const Real cosine                = std::cos(argument);
-            output[0]                        = sine;
-            output[instruction.displacement] = cosine;
+            *output = std::pow(memory[instruction.source], memory[instruction.operand]);
         },
         // Opcode::CALL
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.function(memory[instruction.operand2]);
+            *output = instruction.function(memory[instruction.operand]);
+        },
+        // Opcode::SIN
+        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
+            *output = std::sin(memory[instruction.operand]);
+        },
+        // Opcode::COS
+        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
+            *output = std::cos(memory[instruction.operand]);
+        },
+        // Opcode::SINCOS
+        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
+            const Real argument        = memory[instruction.operand];
+            const Real sine            = std::sin(argument);
+            const Real cosine          = std::cos(argument);
+            output[0]                  = sine;
+            output[instruction.target] = cosine;
         }
     };
 
-    static constexpr std::array<VectorOpcodeFunction, 12> VECTOR_OPCODE_FUNCTIONS = {
+    static constexpr std::array<VectorOpcodeFunction, 14> VECTOR_OPCODE_FUNCTIONS = {
         // Opcode::NOP
         [](Program::Vector*, const Program::Vector*, const Program::Instruction&) {},
         // Opcode::ADD
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.operand1];
-            const Program::Vector& argument2 = memory[instruction.operand2];
+            const Program::Vector& argument1 = memory[instruction.source];
+            const Program::Vector& argument2 = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = argument1[i] + argument2[i];
+                result.v[i] = argument1.v[i] + argument2.v[i];
             }
             *output = result;
         },
         // Opcode::ADD_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand2];
+            const Program::Vector& argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = instruction.immediate + argument[i];
+                result.v[i] = instruction.immediate + argument.v[i];
             }
             *output = result;
         },
         // Opcode::SUBTRACT
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.operand1];
-            const Program::Vector& argument2 = memory[instruction.operand2];
+            const Program::Vector& argument1 = memory[instruction.source];
+            const Program::Vector& argument2 = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = argument1[i] - argument2[i];
+                result.v[i] = argument1.v[i] - argument2.v[i];
             }
             *output = result;
         },
         // Opcode::SUBTRACT_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand2];
+            const Program::Vector& argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = instruction.immediate - argument[i];
+                result.v[i] = instruction.immediate - argument.v[i];
             }
             *output = result;
         },
         // Opcode::MULTIPLY
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.operand1];
-            const Program::Vector& argument2 = memory[instruction.operand2];
+            const Program::Vector& argument1 = memory[instruction.source];
+            const Program::Vector& argument2 = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = argument1[i] * argument2[i];
+                result.v[i] = argument1.v[i] * argument2.v[i];
             }
             *output = result;
         },
         // Opcode::MULTIPLY_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand2];
+            const Program::Vector& argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = instruction.immediate * argument[i];
+                result.v[i] = instruction.immediate * argument.v[i];
             }
             *output = result;
         },
         // Opcode::DIVIDE
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.operand1];
-            const Program::Vector& argument2 = memory[instruction.operand2];
+            const Program::Vector& argument1 = memory[instruction.source];
+            const Program::Vector& argument2 = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = argument1[i] / argument2[i];
+                result.v[i] = argument1.v[i] / argument2.v[i];
             }
             *output = result;
         },
         // Opcode::DIVIDE_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand2];
+            const Program::Vector& argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = instruction.immediate / argument[i];
+                result.v[i] = instruction.immediate / argument.v[i];
             }
             *output = result;
         },
         // Opcode::POWER
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.operand1];
-            const Program::Vector& argument2 = memory[instruction.operand2];
+            const Program::Vector& argument1 = memory[instruction.source];
+            const Program::Vector& argument2 = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = pow(argument1[i], argument2[i]);
+                result.v[i] = std::pow(argument1.v[i], argument2.v[i]);
+            }
+            *output = result;
+        },
+        // Opcode::CALL
+        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+            Program::Vector        result; // prevents aliasing
+            const Program::Vector& argument = memory[instruction.operand];
+            for (int i = 0; i < Program::Vector::SIZE; ++i) {
+                result.v[i] = instruction.function(argument.v[i]);
+            }
+            *output = result;
+        },
+        // Opcode::SIN
+        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+            Program::Vector result; // prevents aliasing
+#if SIXPACK_ENFORCE_SINCOS_PAIR
+            Program::Vector unused;
+#endif
+            const Program::Vector& argument = memory[instruction.operand];
+            for (int i = 0; i < Program::Vector::SIZE; ++i) {
+                result.v[i] = std::sin(argument.v[i]);
+#if SIXPACK_ENFORCE_SINCOS_PAIR
+                unused.v[i] = std::cos(argument.v[i]);
+#endif
+            }
+            *output = result;
+        },
+        // Opcode::COS
+        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+            Program::Vector result; // prevents aliasing
+#if SIXPACK_ENFORCE_SINCOS_PAIR
+            Program::Vector unused;
+#endif
+            const Program::Vector& argument = memory[instruction.operand];
+            for (int i = 0; i < Program::Vector::SIZE; ++i) {
+#if SIXPACK_ENFORCE_SINCOS_PAIR
+                unused.v[i] = std::sin(argument.v[i]);
+#endif
+                result.v[i] = std::cos(argument.v[i]);
             }
             *output = result;
         },
         // Opcode::SINCOS
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
             Program::Vector        sines, cosines; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand2];
+            const Program::Vector& argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                sines[i]   = std::sin(argument[i]);
-                cosines[i] = std::cos(argument[i]);
+                sines.v[i]   = std::sin(argument.v[i]);
+                cosines.v[i] = std::cos(argument.v[i]);
             }
-            output[0]                        = sines;
-            output[instruction.displacement] = cosines;
-        },
-        // Opcode::CALL
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand2];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = instruction.function(argument[i]);
-            }
-            *output = result;
+            output[0]                  = sines;
+            output[instruction.target] = cosines;
         }
     };
 
@@ -186,16 +235,19 @@ bool Program::Instruction::operator==(const Instruction& other) const {
         // clang-format off
         switch (opcode) {
         case Opcode::NOP:          return false; // NOPs are never merged.
-        case Opcode::ADD:          return operand1  == other.operand1  && operand2 == other.operand2;
-        case Opcode::ADD_IMM:      return immediate == other.immediate && operand2 == other.operand2;
-        case Opcode::SUBTRACT:     return operand1  == other.operand1  && operand2 == other.operand2;
-        case Opcode::SUBTRACT_IMM: return immediate == other.immediate && operand2 == other.operand2;
-        case Opcode::MULTIPLY:     return operand1  == other.operand1  && operand2 == other.operand2;
-        case Opcode::MULTIPLY_IMM: return immediate == other.immediate && operand2 == other.operand2;
-        case Opcode::DIVIDE:       return operand1  == other.operand1  && operand2 == other.operand2;
-        case Opcode::DIVIDE_IMM:   return immediate == other.immediate && operand2 == other.operand2;
-        case Opcode::POWER:        return operand1  == other.operand1  && operand2 == other.operand2;
-        case Opcode::CALL:         return function  == other.function  && operand2 == other.operand2;
+        case Opcode::ADD:          return operand == other.operand && source == other.source;
+        case Opcode::ADD_IMM:      return operand == other.operand && immediate == other.immediate;
+        case Opcode::SUBTRACT:     return operand == other.operand && source == other.source;
+        case Opcode::SUBTRACT_IMM: return operand == other.operand && immediate == other.immediate;
+        case Opcode::MULTIPLY:     return operand == other.operand && source == other.source;
+        case Opcode::MULTIPLY_IMM: return operand == other.operand && immediate == other.immediate;
+        case Opcode::DIVIDE:       return operand == other.operand && source == other.source;
+        case Opcode::DIVIDE_IMM:   return operand == other.operand && immediate == other.immediate;
+        case Opcode::POWER:        return operand == other.operand && source == other.source;
+        case Opcode::CALL:         return operand == other.operand && function  == other.function;
+        case Opcode::SIN:          return operand == other.operand;
+        case Opcode::COS:          return operand == other.operand;
+        case Opcode::SINCOS:       return operand == other.operand && target == other.target;
         // clang-format on
         default: assert(false);
         }

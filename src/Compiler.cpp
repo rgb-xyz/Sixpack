@@ -221,11 +221,8 @@ namespace {
             addressComment += comment;
         }
 
-        Program::Address emitInstruction(Program::Opcode             opcode,
-                                         const Program::Instruction& operands,
+        Program::Address emitInstruction(const Program::Instruction& instruction,
                                          const asg::Term*            emitter = nullptr) {
-            Program::Instruction instruction = operands;
-            instruction.opcode               = opcode;
             const auto instructionIt =
                 std::find(mInstructions.instructions.begin(), mInstructions.instructions.end(), instruction);
             const auto address = mInstructions.memoryOffset +
@@ -251,12 +248,12 @@ namespace {
             for (const auto& term : operation.positiveTerms()) {
                 const Program::Address address = getAddress(term.get());
                 if (lastAddress) {
-                    lastAddress      = emitInstruction(sequentialPositiveOp,
-                                                       { .operand1 = *lastAddress, .operand2 = address });
+                    lastAddress = emitInstruction(
+                        { .opcode = sequentialPositiveOp, .operand = address, .source = *lastAddress });
                     pendingOperation = std::nullopt;
                 } else if (needsConstant) {
-                    lastAddress =
-                        emitInstruction(initialPositiveOp, { .immediate = constant, .operand2 = address });
+                    lastAddress = emitInstruction(
+                        { .opcode = initialPositiveOp, .operand = address, .immediate = constant });
                 } else {
                     lastAddress      = address;
                     pendingOperation = initialPositiveOp;
@@ -265,12 +262,12 @@ namespace {
             for (const auto& term : operation.negativeTerms()) {
                 const Program::Address address = getAddress(term.get());
                 if (lastAddress) {
-                    lastAddress      = emitInstruction(sequentialNegativeOp,
-                                                       { .operand1 = *lastAddress, .operand2 = address });
+                    lastAddress = emitInstruction(
+                        { .opcode = sequentialNegativeOp, .operand = address, .source = *lastAddress });
                     pendingOperation = std::nullopt;
                 } else if (needsConstant) {
-                    lastAddress =
-                        emitInstruction(initialNegativeOp, { .immediate = constant, .operand2 = address });
+                    lastAddress = emitInstruction(
+                        { .opcode = initialNegativeOp, .operand = address, .immediate = constant });
                 } else {
                     lastAddress      = address;
                     pendingOperation = initialNegativeOp;
@@ -278,8 +275,8 @@ namespace {
             }
             assert(lastAddress);
             if (pendingOperation) {
-                lastAddress =
-                    emitInstruction(*pendingOperation, { .immediate = constant, .operand2 = *lastAddress });
+                lastAddress = emitInstruction(
+                    { .opcode = *pendingOperation, .operand = *lastAddress, .immediate = constant });
             }
             mapToMemory(&operation, *lastAddress);
         }
@@ -327,9 +324,9 @@ namespace {
                     mOutputs.insert({ String(output->name()), address });
                     mapToMemory(output, address);
                 } else if (const auto* operation = dynamic_cast<const asg::UnaryFunction*>(term)) {
-                    emitInstruction(Program::Opcode::CALL,
-                                    { .function = operation->function(),
-                                      .operand2 = getAddress(operation->argument().get()) },
+                    emitInstruction({ .opcode   = Program::Opcode::CALL,
+                                      .operand  = getAddress(operation->argument().get()),
+                                      .function = operation->function() },
                                     operation);
                 } else if (const auto* operation = dynamic_cast<const asg::Addition*>(term)) {
                     emitGroupOperationSequence(*operation,
@@ -344,14 +341,14 @@ namespace {
                                                Program::Opcode::DIVIDE_IMM,
                                                Program::Opcode::DIVIDE);
                 } else if (const auto* operation = dynamic_cast<const asg::Exponentiation*>(term)) {
-                    emitInstruction(Program::Opcode::POWER,
-                                    { .operand1 = getAddress(operation->base().get()),
-                                      .operand2 = getAddress(operation->exponent().get()) },
+                    emitInstruction({ .opcode  = Program::Opcode::POWER,
+                                      .operand = getAddress(operation->exponent().get()),
+                                      .source  = getAddress(operation->base().get()) },
                                     operation);
                 } else if (const auto* operation = dynamic_cast<const asg::Squaring*>(term)) {
-                    emitInstruction(Program::Opcode::MULTIPLY,
-                                    { .operand1 = getAddress(operation->base().get()),
-                                      .operand2 = getAddress(operation->base().get()) },
+                    emitInstruction({ .opcode  = Program::Opcode::MULTIPLY,
+                                      .operand = getAddress(operation->base().get()),
+                                      .source  = getAddress(operation->base().get()) },
                                     operation);
                 } else {
                     throw CompileException("Code generation failed -- data present in the code section");
@@ -373,18 +370,22 @@ namespace {
                 Program::Instruction& instruction = mInstructions.instructions[index];
                 if (instruction.opcode == Program::Opcode::CALL) {
                     if (instruction.function == RealFunction(&std::sin)) {
-                        candidates[instruction.operand2].sin = &instruction;
+                        candidates[instruction.operand].sin = &instruction;
                     }
                     if (instruction.function == RealFunction(&std::cos)) {
-                        candidates[instruction.operand2].cos = &instruction;
+                        candidates[instruction.operand].cos = &instruction;
                     }
                 }
             }
             for (const auto& [_, candidate] : candidates) {
                 if (candidate.sin && candidate.cos) {
-                    candidate.sin->opcode       = Program::Opcode::SINCOS;
-                    candidate.sin->displacement = candidate.cos - candidate.sin;
-                    candidate.cos->opcode       = Program::Opcode::NOP;
+                    candidate.sin->opcode = Program::Opcode::SINCOS;
+                    candidate.sin->target = candidate.cos - candidate.sin;
+                    candidate.cos->opcode = Program::Opcode::NOP;
+                } else if (candidate.sin) {
+                    candidate.sin->opcode = Program::Opcode::SIN;
+                } else if (candidate.cos) {
+                    candidate.sin->opcode = Program::Opcode::COS;
                 }
             }
         }

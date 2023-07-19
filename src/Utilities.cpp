@@ -478,55 +478,58 @@ void dumpProgram(const Program& program, std::ostream& output) {
         switch (code[i].opcode) {
         case Program::Opcode::NOP: mnemonic = "nop"; break;
         case Program::Opcode::ADD:
-            mnemonic = "add";
-            arguments =
-                std::format("{}, {}", formatAddress(code[i].operand1), formatAddress(code[i].operand2));
+            mnemonic  = "add";
+            arguments = std::format("{}, {}", formatAddress(code[i].source), formatAddress(code[i].operand));
             break;
         case Program::Opcode::ADD_IMM:
             mnemonic  = "add";
-            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand2));
+            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand));
             break;
         case Program::Opcode::SUBTRACT:
-            mnemonic = "sub";
-            arguments =
-                std::format("{}, {}", formatAddress(code[i].operand1), formatAddress(code[i].operand2));
+            mnemonic  = "sub";
+            arguments = std::format("{}, {}", formatAddress(code[i].source), formatAddress(code[i].operand));
             break;
         case Program::Opcode::SUBTRACT_IMM:
             mnemonic  = "sub";
-            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand2));
+            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand));
             break;
         case Program::Opcode::MULTIPLY:
-            mnemonic = "mul";
-            arguments =
-                std::format("{}, {}", formatAddress(code[i].operand1), formatAddress(code[i].operand2));
+            mnemonic  = "mul";
+            arguments = std::format("{}, {}", formatAddress(code[i].source), formatAddress(code[i].operand));
             break;
         case Program::Opcode::MULTIPLY_IMM:
             mnemonic  = "mul";
-            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand2));
+            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand));
             break;
         case Program::Opcode::DIVIDE:
-            mnemonic = "div";
-            arguments =
-                std::format("{}, {}", formatAddress(code[i].operand1), formatAddress(code[i].operand2));
+            mnemonic  = "div";
+            arguments = std::format("{}, {}", formatAddress(code[i].source), formatAddress(code[i].operand));
             break;
         case Program::Opcode::DIVIDE_IMM:
             mnemonic  = "div";
-            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand2));
+            arguments = std::format("{}, {}", code[i].immediate, formatAddress(code[i].operand));
             break;
         case Program::Opcode::POWER:
-            mnemonic = "pow";
-            arguments =
-                std::format("{}, {}", formatAddress(code[i].operand1), formatAddress(code[i].operand2));
-            break;
-        case Program::Opcode::SINCOS:
-            mnemonic  = "sincos";
-            arguments = std::format("${:+}, {}", code[i].displacement, formatAddress(code[i].operand2));
+            mnemonic  = "pow";
+            arguments = std::format("{}, {}", formatAddress(code[i].source), formatAddress(code[i].operand));
             break;
         case Program::Opcode::CALL:
             mnemonic  = "call";
             arguments = std::format("{:p}, {}",
                                     reinterpret_cast<void*>(code[i].function),
-                                    formatAddress(code[i].operand2));
+                                    formatAddress(code[i].operand));
+            break;
+        case Program::Opcode::SIN:
+            mnemonic  = "sin";
+            arguments = std::format("{}", formatAddress(code[i].operand));
+            break;
+        case Program::Opcode::COS:
+            mnemonic  = "cos";
+            arguments = std::format("{}", formatAddress(code[i].operand));
+            break;
+        case Program::Opcode::SINCOS:
+            mnemonic  = "sincos";
+            arguments = std::format("{}, ${:+}", formatAddress(code[i].operand), code[i].target);
             break;
         default: assert(false); mnemonic = "???";
         }

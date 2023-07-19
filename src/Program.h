@@ -14,26 +14,18 @@ class Program {
 public:
     using Scalar = Real;
 
-    struct Vector {
+    struct alignas(16) Vector {
         static constexpr int SIZE = 4;
 
         Vector() = default;
-        constexpr Vector(const Real value) {
-            for (int i = 0; i < SIZE; ++i) {
-                mValues[i] = value;
-            }
-        }
-        constexpr Vector(const Vector& other) {
-            for (int i = 0; i < SIZE; ++i) {
-                mValues[i] = other.mValues[i];
-            }
-        }
+        constexpr Vector(const Real value)
+            : v{ value, value, value, value } {}
+        constexpr Vector(const Real v0, const Real v1, const Real v2, const Real v3)
+            : v{ v0, v1, v2, v3 } {}
+        constexpr Vector(const Vector& other)
+            : v{ other.v[0], other.v[1], other.v[2], other.v[3] } {}
 
-        constexpr Real  operator[](int i) const { return mValues[i]; }
-        constexpr Real& operator[](int i) { return mValues[i]; }
-
-    private:
-        Real mValues[SIZE];
+        Real v[SIZE];
     };
 
     using Address      = uint32_t;
@@ -50,29 +42,33 @@ public:
     };
 
     enum class Opcode : uint8_t {
-        NOP,          //
-        ADD,          // output <-- memory[operand1] + memory[operand2]
-        ADD_IMM,      // output <-- immediate        + memory[operand2]
-        SUBTRACT,     // output <-- memory[operand1] - memory[operand2]
-        SUBTRACT_IMM, // output <-- immediate        - memory[operand2]
-        MULTIPLY,     // output <-- memory[operand1] * memory[operand2]
-        MULTIPLY_IMM, // output <-- immediate        * memory[operand2]
-        DIVIDE,       // output <-- memory[operand1] / memory[operand2]
-        DIVIDE_IMM,   // output <-- immediate        / memory[operand2]
-        POWER,        // output <-- memory[operand1] ^ memory[operand2]
-        SINCOS,       // output <-- sin(memory[operand2]) ; output+displacement <-- cos(memory[operand2])
-        CALL          // output <-- function(memory[operand2])
+        NOP,                          //
+        ADD,                          // output <-- memory[source] + memory[operand]
+        ADD_IMM,                      // output <-- immediate      + memory[operand]
+        SUBTRACT,                     // output <-- memory[source] - memory[operand]
+        SUBTRACT_IMM,                 // output <-- immediate      - memory[operand]
+        MULTIPLY,                     // output <-- memory[source] * memory[operand]
+        MULTIPLY_IMM,                 // output <-- immediate      * memory[operand]
+        DIVIDE,                       // output <-- memory[source] / memory[operand]
+        DIVIDE_IMM,                   // output <-- immediate      / memory[operand]
+        POWER,                        // output <-- memory[source] ^ memory[operand]
+        CALL,                         // output <-- function(memory[operand])
+        /*** Intrinsic Functions ***/ //
+        SIN,                          // output        <-- sin(memory[operand])
+        COS,                          // output        <-- cos(memory[operand])
+        SINCOS                        // output        <-- sin(memory[operand])
+                                      // output+target <-- cos(memory[operand])
     };
 
     struct alignas(16) Instruction {
+        Opcode  opcode;
+        Address operand;
         union {
-            Address      operand1;
+            Address      source;
             Real         immediate;
             RealFunction function;
-            ptrdiff_t    displacement;
+            ptrdiff_t    target;
         };
-        Address operand2;
-        Opcode  opcode;
 
         bool operator==(const Instruction& other) const;
     };

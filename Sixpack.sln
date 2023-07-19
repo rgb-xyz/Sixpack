@@ -22,6 +22,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Compiler.Test", "tests\Comp
 		{E62D8B28-244B-4295-8D30-6418440A0214} = {E62D8B28-244B-4295-8D30-6418440A0214}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Benchmark", "benchmark\Benchmark.vcxproj", "{EA6BB71B-01FD-4B70-95D0-27C503B9DB92}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E62D8B28-244B-4295-8D30-6418440A0214} = {E62D8B28-244B-4295-8D30-6418440A0214}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -44,6 +49,9 @@ Global
 		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Debug|x64.Build.0 = Debug|x64
 		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Release|x64.ActiveCfg = Release|x64
 		{52852B7D-A76C-4200-90A3-2A61597B1EB4}.Release|x64.Build.0 = Release|x64
+		{EA6BB71B-01FD-4B70-95D0-27C503B9DB92}.Debug|x64.ActiveCfg = Release|x64
+		{EA6BB71B-01FD-4B70-95D0-27C503B9DB92}.Release|x64.ActiveCfg = Release|x64
+		{EA6BB71B-01FD-4B70-95D0-27C503B9DB92}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -52,6 +60,7 @@ Global
 		{B2556049-BE72-43FE-BFFC-17F5B45B5AC7} = {F805AE5D-9761-46E9-959A-174A38FC2712}
 		{5DD5DDBF-B4E7-4CA4-86AD-80065BE7501C} = {F805AE5D-9761-46E9-959A-174A38FC2712}
 		{52852B7D-A76C-4200-90A3-2A61597B1EB4} = {F805AE5D-9761-46E9-959A-174A38FC2712}
+		{EA6BB71B-01FD-4B70-95D0-27C503B9DB92} = {F805AE5D-9761-46E9-959A-174A38FC2712}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2C8C2778-527A-46C8-AC7B-4BBE25EC7D90}
