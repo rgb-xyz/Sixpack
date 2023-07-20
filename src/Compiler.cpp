@@ -385,7 +385,7 @@ namespace {
                 } else if (candidate.sin) {
                     candidate.sin->opcode = Program::Opcode::SIN;
                 } else if (candidate.cos) {
-                    candidate.sin->opcode = Program::Opcode::COS;
+                    candidate.cos->opcode = Program::Opcode::COS;
                 }
             }
         }
@@ -545,11 +545,13 @@ std::vector<std::pair<StringView, Expression>> Compiler::getOutputs() const {
 }
 
 Program Compiler::compile() const {
-    using Transform = asg::Reduced<asg::Grouped<asg::ConstEvaluated<asg::Merge>>>;
+    using Stage1 = asg::Reduced<asg::Grouped<asg::ConstEvaluated<asg::Merge>>>;
+    using Stage2 = asg::TrigonometricIdentities<asg::Merge>;
 
-    std::shared_ptr<const asg::Term> graph            = makeGraph();
-    std::shared_ptr<const asg::Term> transformedGraph = Transform{}.transform(graph);
-    return compileGraph(*transformedGraph);
+    std::shared_ptr<const asg::Term> graph = makeGraph();
+    graph                                  = Stage1{}.transform(graph);
+    graph                                  = Stage2{}.transform(graph);
+    return compileGraph(*graph);
 }
 
 std::shared_ptr<const asg::Term> Compiler::makeGraph() const {

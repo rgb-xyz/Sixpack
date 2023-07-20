@@ -9,6 +9,12 @@
 #define SIXPACK_NAMESPACE_BEGIN namespace sixpack {
 #define SIXPACK_NAMESPACE_END   } // namespace sixpack
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#   define FORCEINLINE [[msvc::forceinline]]
+#else
+#   define FORCEINLINE [[gnu::always_inline]]
+#endif
+
 SIXPACK_NAMESPACE_BEGIN
 
 // Configuration / Aliases

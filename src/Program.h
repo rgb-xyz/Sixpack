@@ -14,18 +14,47 @@ class Program {
 public:
     using Scalar = Real;
 
-    struct alignas(16) Vector {
+    struct alignas(32) Vector {
         static constexpr int SIZE = 4;
 
         Vector() = default;
         constexpr Vector(const Real value)
-            : v{ value, value, value, value } {}
+            : mValues{ value, value, value, value } {}
         constexpr Vector(const Real v0, const Real v1, const Real v2, const Real v3)
-            : v{ v0, v1, v2, v3 } {}
+            : mValues{ v0, v1, v2, v3 } {}
         constexpr Vector(const Vector& other)
-            : v{ other.v[0], other.v[1], other.v[2], other.v[3] } {}
+            : mValues{ other.mValues[0], other.mValues[1], other.mValues[2], other.mValues[3] } {}
 
-        Real v[SIZE];
+        FORCEINLINE Vector operator+(const Vector other) const {
+            return { mValues[0] + other.mValues[0],
+                     mValues[1] + other.mValues[1],
+                     mValues[2] + other.mValues[2],
+                     mValues[3] + other.mValues[3] };
+        }
+        FORCEINLINE Vector operator-(const Vector other) const {
+            return { mValues[0] - other.mValues[0],
+                     mValues[1] - other.mValues[1],
+                     mValues[2] - other.mValues[2],
+                     mValues[3] - other.mValues[3] };
+        }
+        FORCEINLINE Vector operator*(const Vector other) const {
+            return { mValues[0] * other.mValues[0],
+                     mValues[1] * other.mValues[1],
+                     mValues[2] * other.mValues[2],
+                     mValues[3] * other.mValues[3] };
+        }
+        FORCEINLINE Vector operator/(const Vector other) const {
+            return { mValues[0] / other.mValues[0],
+                     mValues[1] / other.mValues[1],
+                     mValues[2] / other.mValues[2],
+                     mValues[3] / other.mValues[3] };
+        }
+
+        FORCEINLINE Real  operator[](const auto index) const { return mValues[index]; }
+        FORCEINLINE Real& operator[](const auto index) { return mValues[index]; }
+
+    private:
+        Real mValues[SIZE];
     };
 
     using Address      = uint32_t;

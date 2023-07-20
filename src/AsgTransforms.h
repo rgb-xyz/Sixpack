@@ -406,6 +406,48 @@ namespace asg {
             : mRenames(std::move(renames)) {}
     };
 
+    template <typename TTransform>
+    class TrigonometricIdentities : public TransformOperator<TTransform> {
+        std::unordered_map<std::shared_ptr<const Term>, std::shared_ptr<const Term>> mSquaredSines;
+        std::unordered_map<std::shared_ptr<const Term>, std::shared_ptr<const Term>> mSquaredCosines;
+
+    protected:
+        using TTransform::transformImpl;
+
+        std::shared_ptr<const Term> transformImpl(const Squaring& term) {
+            if (const auto* function = dynamic_cast<const UnaryFunction*>(term.base().get())) {
+                if (function->function() == RealFunction(&std::sin)) {
+                    const auto squaredCosIt = mSquaredCosines.find(function->argument());
+                    if (squaredCosIt != mSquaredCosines.end()) {
+                        const auto diff = std::make_shared<Addition>(std::make_shared<Constant>(1));
+                        diff->addNegativeTerm(squaredCosIt->second);
+                        return this->transformNext(*diff);
+                    } else {
+                        const auto transformed = this->transformNext(term);
+                        mSquaredSines.insert({ function->argument(), transformed });
+                        return transformed;
+                    }
+                }
+                if (function->function() == RealFunction(&std::cos)) {
+                    const auto squaredSinIt = mSquaredSines.find(function->argument());
+                    if (squaredSinIt != mSquaredSines.end()) {
+                        const auto diff = std::make_shared<Addition>(std::make_shared<Constant>(1));
+                        diff->addNegativeTerm(squaredSinIt->second);
+                        return this->transformNext(*diff);
+                    } else {
+                        const auto transformed = this->transformNext(term);
+                        mSquaredCosines.insert({ function->argument(), transformed });
+                        return transformed;
+                    }
+                }
+            }
+            return this->transformNext(term);
+        }
+
+    public:
+        using TransformOperator<TTransform>::TransformOperator;
+    };
+
 } // namespace asg
 
 SIXPACK_NAMESPACE_END

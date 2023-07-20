@@ -102,7 +102,7 @@ static void test() {
             std::cout << "g" << std::endl;
             for (int j = 0; j < 4; ++j) {
                 for (int i = 0; i < 4; ++i) {
-                    std::cout << " " << std::format("{:10f}", result[j][i].v[0]);
+                    std::cout << " " << std::format("{:10f}", result[j][i][0]);
                 }
                 std::cout << std::endl;
             }
@@ -110,7 +110,7 @@ static void test() {
             for (int j = 0; j < 4; ++j) {
                 for (int i = 0; i < 4; ++i) {
                     std::cout << " "
-                              << std::format("{:10f}", (result[j][i].v[1] - result[j][i].v[0]) / DIFF_STEP);
+                              << std::format("{:10f}", (result[j][i][1] - result[j][i][0]) / DIFF_STEP);
                 }
                 std::cout << std::endl;
             }
@@ -118,7 +118,7 @@ static void test() {
             for (int j = 0; j < 4; ++j) {
                 for (int i = 0; i < 4; ++i) {
                     std::cout << " "
-                              << std::format("{:10f}", (result[j][i].v[2] - result[j][i].v[0]) / DIFF_STEP);
+                              << std::format("{:10f}", (result[j][i][2] - result[j][i][0]) / DIFF_STEP);
                 }
                 std::cout << std::endl;
             }
@@ -126,7 +126,7 @@ static void test() {
             for (int j = 0; j < 4; ++j) {
                 for (int i = 0; i < 4; ++i) {
                     std::cout << " "
-                              << std::format("{:10f}", (result[j][i].v[3] - result[j][i].v[0]) / DIFF_STEP);
+                              << std::format("{:10f}", (result[j][i][3] - result[j][i][0]) / DIFF_STEP);
                 }
                 std::cout << std::endl;
             }

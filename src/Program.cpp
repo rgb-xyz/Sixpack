@@ -6,17 +6,6 @@
 
 SIXPACK_NAMESPACE_BEGIN
 
-// MSVC-specific optimization:
-//
-// If AVX is enabled and both "sin" and "cos" are used, the compiler will use a vectorized function
-// "__libm_avx_sincos4_" which calculates 2 sine--cosine pairs (for 2 values). Even though we need just the
-// sine or cosine, calling both will be faster because we will get 2 values in a single round.
-#if defined(_MSC_VER) && !defined(__clang__) && defined(__AVX__) && !defined(_DEBUG)
-#   define SIXPACK_ENFORCE_SINCOS_PAIR 1
-#else
-#   define SIXPACK_ENFORCE_SINCOS_PAIR 0
-#endif
-
 namespace {
 
     using ScalarOpcodeFunction = void (*)(Program::Scalar*            output,
@@ -79,11 +68,9 @@ namespace {
         },
         // Opcode::SINCOS
         [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            const Real argument        = memory[instruction.operand];
-            const Real sine            = std::sin(argument);
-            const Real cosine          = std::cos(argument);
-            output[0]                  = sine;
-            output[instruction.target] = cosine;
+            const Program::Scalar argument = memory[instruction.operand];
+            output[0]                      = std::sin(argument);
+            output[instruction.target]     = std::cos(argument);
         }
     };
 
@@ -92,136 +79,80 @@ namespace {
         [](Program::Vector*, const Program::Vector*, const Program::Instruction&) {},
         // Opcode::ADD
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.source];
-            const Program::Vector& argument2 = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = argument1.v[i] + argument2.v[i];
-            }
-            *output = result;
+            *output = memory[instruction.source] + memory[instruction.operand];
         },
         // Opcode::ADD_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = instruction.immediate + argument.v[i];
-            }
-            *output = result;
+            *output = Program::Vector(instruction.immediate) + memory[instruction.operand];
         },
         // Opcode::SUBTRACT
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.source];
-            const Program::Vector& argument2 = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = argument1.v[i] - argument2.v[i];
-            }
-            *output = result;
+            *output = memory[instruction.source] - memory[instruction.operand];
         },
         // Opcode::SUBTRACT_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = instruction.immediate - argument.v[i];
-            }
-            *output = result;
+            *output = Program::Vector(instruction.immediate) - memory[instruction.operand];
         },
         // Opcode::MULTIPLY
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.source];
-            const Program::Vector& argument2 = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = argument1.v[i] * argument2.v[i];
-            }
-            *output = result;
+            *output = memory[instruction.source] * memory[instruction.operand];
         },
         // Opcode::MULTIPLY_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = instruction.immediate * argument.v[i];
-            }
-            *output = result;
+            *output = Program::Vector(instruction.immediate) * memory[instruction.operand];
         },
         // Opcode::DIVIDE
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.source];
-            const Program::Vector& argument2 = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = argument1.v[i] / argument2.v[i];
-            }
-            *output = result;
+            *output = memory[instruction.source] / memory[instruction.operand];
         },
         // Opcode::DIVIDE_IMM
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand];
-            for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = instruction.immediate / argument.v[i];
-            }
-            *output = result;
+            *output = Program::Vector(instruction.immediate) / memory[instruction.operand];
         },
         // Opcode::POWER
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument1 = memory[instruction.source];
-            const Program::Vector& argument2 = memory[instruction.operand];
+            Program::Vector       result; // prevents aliasing
+            const Program::Vector argument1 = memory[instruction.source];
+            const Program::Vector argument2 = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = std::pow(argument1.v[i], argument2.v[i]);
+                result[i] = std::pow(argument1[i], argument2[i]);
             }
             *output = result;
         },
         // Opcode::CALL
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        result; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand];
+            Program::Vector       result; // prevents aliasing
+            const Program::Vector argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = instruction.function(argument.v[i]);
+                result[i] = instruction.function(argument[i]);
             }
             *output = result;
         },
         // Opcode::SIN
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector result; // prevents aliasing
-#if SIXPACK_ENFORCE_SINCOS_PAIR
-            Program::Vector unused;
-#endif
-            const Program::Vector& argument = memory[instruction.operand];
+            Program::Vector       result; // prevents aliasing
+            const Program::Vector argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result.v[i] = std::sin(argument.v[i]);
-#if SIXPACK_ENFORCE_SINCOS_PAIR
-                unused.v[i] = std::cos(argument.v[i]);
-#endif
+                result[i] = std::sin(argument[i]);
             }
             *output = result;
         },
         // Opcode::COS
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector result; // prevents aliasing
-#if SIXPACK_ENFORCE_SINCOS_PAIR
-            Program::Vector unused;
-#endif
-            const Program::Vector& argument = memory[instruction.operand];
+            Program::Vector       result; // prevents aliasing
+            const Program::Vector argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-#if SIXPACK_ENFORCE_SINCOS_PAIR
-                unused.v[i] = std::sin(argument.v[i]);
-#endif
-                result.v[i] = std::cos(argument.v[i]);
+                result[i] = std::cos(argument[i]);
             }
             *output = result;
         },
         // Opcode::SINCOS
         [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            Program::Vector        sines, cosines; // prevents aliasing
-            const Program::Vector& argument = memory[instruction.operand];
+            Program::Vector       sines, cosines; // prevents aliasing
+            const Program::Vector argument = memory[instruction.operand];
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                sines.v[i]   = std::sin(argument.v[i]);
-                cosines.v[i] = std::cos(argument.v[i]);
+                sines[i]   = std::sin(argument[i]);
+                cosines[i] = std::cos(argument[i]);
             }
             output[0]                  = sines;
             output[instruction.target] = cosines;
