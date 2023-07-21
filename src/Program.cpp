@@ -8,154 +8,196 @@ SIXPACK_NAMESPACE_BEGIN
 
 namespace {
 
-    using ScalarOpcodeFunction = void (*)(Program::Scalar*            output,
-                                          const Program::Scalar*      memory,
-                                          const Program::Instruction& instruction);
-    using VectorOpcodeFunction = void (*)(Program::Vector*            output,
-                                          const Program::Vector*      memory,
-                                          const Program::Instruction& instruction);
-
-    static constexpr std::array<ScalarOpcodeFunction, 14> SCALAR_OPCODE_FUNCTIONS = {
+    static constexpr std::array<Executable<Program::Scalar>::Function, 14> SCALAR_FUNCTIONS = {
         // Opcode::NOP
-        [](Program::Scalar*, const Program::Scalar*, const Program::Instruction&) {},
+        [](const Executable<Program::Scalar>::Instruction*) {},
         // Opcode::ADD
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] + memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = *instruction->extraInput + *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::ADD_IMM
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate + memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = Program::Scalar(instruction->immediate) + *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SUBTRACT
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] - memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = *instruction->extraInput - *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SUBTRACT_IMM
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate - memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = Program::Scalar(instruction->immediate) - *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::MULTIPLY
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] * memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = *instruction->extraInput * *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::MULTIPLY_IMM
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate * memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = Program::Scalar(instruction->immediate) * *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::DIVIDE
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] / memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = *instruction->extraInput / *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::DIVIDE_IMM
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.immediate / memory[instruction.operand];
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = Program::Scalar(instruction->immediate) / *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::POWER
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = std::pow(memory[instruction.source], memory[instruction.operand]);
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = std::pow(*instruction->extraInput, *instruction->input);
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::CALL
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = instruction.function(memory[instruction.operand]);
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = instruction->callable(*instruction->input);
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SIN
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = std::sin(memory[instruction.operand]);
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = std::sin(*instruction->input);
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::COS
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            *output = std::cos(memory[instruction.operand]);
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar result = std::cos(*instruction->input);
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SINCOS
-        [](Program::Scalar* output, const Program::Scalar* memory, const Program::Instruction& instruction) {
-            const Program::Scalar argument = memory[instruction.operand];
-            output[0]                      = std::sin(argument);
-            output[instruction.target]     = std::cos(argument);
+        [](const Executable<Program::Scalar>::Instruction* instruction) {
+            const Program::Scalar argument = *instruction->input;
+            const Program::Scalar sine     = std::sin(argument);
+            const Program::Scalar cosine   = std::cos(argument);
+            *instruction->output           = sine;
+            *instruction->extraOutput      = cosine;
+            return instruction->next(instruction + 1);
         }
     };
 
-    static constexpr std::array<VectorOpcodeFunction, 14> VECTOR_OPCODE_FUNCTIONS = {
+    static constexpr std::array<Executable<Program::Vector>::Function, 14> VECTOR_FUNCTIONS = {
         // Opcode::NOP
-        [](Program::Vector*, const Program::Vector*, const Program::Instruction&) {},
+        [](const Executable<Program::Vector>::Instruction*) {},
         // Opcode::ADD
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] + memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = *instruction->extraInput + *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::ADD_IMM
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = Program::Vector(instruction.immediate) + memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = Program::Vector(instruction->immediate) + *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SUBTRACT
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] - memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = *instruction->extraInput - *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SUBTRACT_IMM
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = Program::Vector(instruction.immediate) - memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = Program::Vector(instruction->immediate) - *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::MULTIPLY
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] * memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = *instruction->extraInput * *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::MULTIPLY_IMM
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = Program::Vector(instruction.immediate) * memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = Program::Vector(instruction->immediate) * *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::DIVIDE
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = memory[instruction.source] / memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = *instruction->extraInput / *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::DIVIDE_IMM
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
-            *output = Program::Vector(instruction.immediate) / memory[instruction.operand];
+        [](const Executable<Program::Vector>::Instruction* instruction) {
+            const Program::Vector result = Program::Vector(instruction->immediate) / *instruction->input;
+            *instruction->output         = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::POWER
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+        [](const Executable<Program::Vector>::Instruction* instruction) {
             Program::Vector       result; // prevents aliasing
-            const Program::Vector argument1 = memory[instruction.source];
-            const Program::Vector argument2 = memory[instruction.operand];
+            const Program::Vector argument1 = *instruction->extraInput;
+            const Program::Vector argument2 = *instruction->input;
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
                 result[i] = std::pow(argument1[i], argument2[i]);
             }
-            *output = result;
+            *instruction->output = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::CALL
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+        [](const Executable<Program::Vector>::Instruction* instruction) {
             Program::Vector       result; // prevents aliasing
-            const Program::Vector argument = memory[instruction.operand];
+            const Program::Vector argument = *instruction->input;
+            const RealFunction    callable = instruction->callable;
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
-                result[i] = instruction.function(argument[i]);
+                result[i] = callable(argument[i]);
             }
-            *output = result;
+            *instruction->output = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SIN
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+        [](const Executable<Program::Vector>::Instruction* instruction) {
             Program::Vector       result; // prevents aliasing
-            const Program::Vector argument = memory[instruction.operand];
+            const Program::Vector argument = *instruction->input;
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
                 result[i] = std::sin(argument[i]);
             }
-            *output = result;
+            *instruction->output = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::COS
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+        [](const Executable<Program::Vector>::Instruction* instruction) {
             Program::Vector       result; // prevents aliasing
-            const Program::Vector argument = memory[instruction.operand];
+            const Program::Vector argument = *instruction->input;
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
                 result[i] = std::cos(argument[i]);
             }
-            *output = result;
+            *instruction->output = result;
+            return instruction->next(instruction + 1);
         },
         // Opcode::SINCOS
-        [](Program::Vector* output, const Program::Vector* memory, const Program::Instruction& instruction) {
+        [](const Executable<Program::Vector>::Instruction* instruction) {
             Program::Vector       sines, cosines; // prevents aliasing
-            const Program::Vector argument = memory[instruction.operand];
+            const Program::Vector argument = *instruction->input;
             for (int i = 0; i < Program::Vector::SIZE; ++i) {
                 sines[i]   = std::sin(argument[i]);
                 cosines[i] = std::cos(argument[i]);
             }
-            output[0]                  = sines;
-            output[instruction.target] = cosines;
+            *instruction->output      = sines;
+            *instruction->extraOutput = cosines;
+            return instruction->next(instruction + 1);
         }
     };
 
@@ -180,7 +222,8 @@ bool Program::Instruction::operator==(const Instruction& other) const {
         case Opcode::COS:          return operand == other.operand;
         case Opcode::SINCOS:       return operand == other.operand && target == other.target;
         // clang-format on
-        default: assert(false);
+        default:
+            assert(false);
         }
     }
     return false;
@@ -225,36 +268,70 @@ Program::Address Program::getOutputAddress(StringView name) const {
     return outputIt->second;
 }
 
-Program::ScalarMemory Program::allocateScalarMemory() const {
-    ScalarMemory memory(mInstructions.memoryOffset + mInstructions.instructions.size(), Scalar{});
-    std::copy(mConstants.values.begin(), mConstants.values.end(), memory.begin() + mConstants.memoryOffset);
-    return memory;
-}
+template <typename TWord>
+static Executable<TWord> makeExecutable(const Program::Constants&    constants,
+                                        const Program::Instructions& program,
+                                        const auto&                  functions) {
+    std::vector<TWord>                                   memory;
+    std::vector<typename Executable<TWord>::Instruction> instructions;
+    typename Executable<TWord>::Function                 startPoint;
 
-Program::VectorMemory Program::allocateVectorMemory() const {
-    VectorMemory memory(mInstructions.memoryOffset + mInstructions.instructions.size(), Vector{});
-    std::copy(mConstants.values.begin(), mConstants.values.end(), memory.begin() + mConstants.memoryOffset);
-    return memory;
-}
+    const auto emitCall = [&](typename Executable<TWord>::Function call) {
+        if (instructions.empty()) {
+            startPoint = call;
+        } else {
+            instructions.back().next = call;
+        }
+    };
 
-void Program::run(ScalarMemory& memory) const {
-    assert(memory.size() == mInstructions.memoryOffset + mInstructions.instructions.size());
-    const Scalar* inputs = memory.data();
-    Scalar*       output = memory.data() + mInstructions.memoryOffset;
-    for (const Instruction& instruction : mInstructions.instructions) {
-        SCALAR_OPCODE_FUNCTIONS[int(instruction.opcode)](output, inputs, instruction);
-        ++output;
+    const size_t programSize = program.instructions.size();
+    memory.resize(program.memoryOffset + programSize, TWord{});
+    std::copy(constants.values.begin(), constants.values.end(), memory.begin() + constants.memoryOffset);
+    instructions.reserve(programSize);
+    for (int i = 0; i < programSize; ++i) {
+        const Program::Instruction& input = program.instructions[i];
+        if (input.opcode == Program::Opcode::NOP) {
+            continue;
+        }
+        emitCall(functions[int(input.opcode)]);
+        typename Executable<TWord>::Instruction& output = instructions.emplace_back();
+        output.output                                   = memory.data() + program.memoryOffset + i;
+        output.input                                    = memory.data() + input.operand;
+        switch (input.opcode) {
+        case Program::Opcode::ADD:
+        case Program::Opcode::SUBTRACT:
+        case Program::Opcode::MULTIPLY:
+        case Program::Opcode::DIVIDE:
+        case Program::Opcode::POWER:
+            output.extraInput = memory.data() + input.source;
+            break;
+        case Program::Opcode::ADD_IMM:
+        case Program::Opcode::SUBTRACT_IMM:
+        case Program::Opcode::MULTIPLY_IMM:
+        case Program::Opcode::DIVIDE_IMM:
+        case Program::Opcode::CALL:
+            output.immediate = input.immediate;
+            break;
+        case Program::Opcode::SIN:
+        case Program::Opcode::COS:
+            break;
+        case Program::Opcode::SINCOS:
+            output.extraOutput = memory.data() + program.memoryOffset + (i + input.target);
+            break;
+        default:
+            assert(false);
+        }
     }
+    emitCall(functions[int(Program::Opcode::NOP)]);
+    return Executable<TWord>(std::move(memory), std::move(instructions), startPoint);
 }
 
-void Program::run(VectorMemory& memory) const {
-    assert(memory.size() == mInstructions.memoryOffset + mInstructions.instructions.size());
-    const Vector* inputs = memory.data();
-    Vector*       output = memory.data() + mInstructions.memoryOffset;
-    for (const Instruction& instruction : mInstructions.instructions) {
-        VECTOR_OPCODE_FUNCTIONS[int(instruction.opcode)](output, inputs, instruction);
-        ++output;
-    }
+Executable<Program::Scalar> Program::makeScalarExecutable() const {
+    return makeExecutable<Scalar>(mConstants, mInstructions, SCALAR_FUNCTIONS);
+}
+
+Executable<Program::Vector> Program::makeVectorExecutable() const {
+    return makeExecutable<Vector>(mConstants, mInstructions, VECTOR_FUNCTIONS);
 }
 
 SIXPACK_NAMESPACE_END

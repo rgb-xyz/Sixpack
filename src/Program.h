@@ -9,6 +9,8 @@ SIXPACK_NAMESPACE_BEGIN
 namespace asg {
     class Term;
 }
+template <typename TWord>
+class Executable;
 
 class Program {
 public:
@@ -57,9 +59,7 @@ public:
         Real mValues[SIZE];
     };
 
-    using Address      = uint32_t;
-    using ScalarMemory = std::vector<Scalar>;
-    using VectorMemory = std::vector<Vector>;
+    using Address = uint32_t;
 
     static constexpr Address SCRATCHPAD_ADDRESS = 0;
 
@@ -89,7 +89,7 @@ public:
                                       // output+target <-- cos(memory[operand])
     };
 
-    struct alignas(16) Instruction {
+    struct Instruction {
         Opcode  opcode;
         Address operand;
         union {
@@ -133,11 +133,45 @@ public:
     Address getInputAddress(StringView name) const;
     Address getOutputAddress(StringView name) const;
 
-    ScalarMemory allocateScalarMemory() const;
-    VectorMemory allocateVectorMemory() const;
+    Executable<Scalar> makeScalarExecutable() const;
+    Executable<Vector> makeVectorExecutable() const;
+};
 
-    void run(ScalarMemory& memory) const;
-    void run(VectorMemory& memory) const;
+template <typename TWord>
+class Executable {
+public:
+    struct Instruction;
+    using Function = void (*)(const Instruction* instruction);
+
+    struct alignas(32) Instruction {
+        Function     next;
+        TWord*       output;
+        const TWord* input;
+        union {
+            const TWord* extraInput;
+            Real         immediate;
+            RealFunction callable;
+            TWord*       extraOutput;
+        };
+    };
+
+private:
+    std::vector<TWord>             mMemory;
+    const std::vector<Instruction> mInstructions;
+    const Function                 mStartPoint;
+
+public:
+    Executable(std::vector<TWord> memory, std::vector<Instruction> instructions, Function startPoint)
+        : mMemory(std::move(memory))
+        , mInstructions(std::move(instructions))
+        , mStartPoint(startPoint) {
+        assert(startPoint);
+    }
+
+    std::vector<TWord>&       memory() { return mMemory; }
+    const std::vector<TWord>& memory() const { return mMemory; }
+
+    void run() { mStartPoint(mInstructions.data()); }
 };
 
 SIXPACK_NAMESPACE_END

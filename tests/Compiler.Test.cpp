@@ -43,9 +43,8 @@ output g_32 = 0
 output g_33 = (r^2 + a^2 + [r_s*r*a^2]/SIGMA*sin(theta)^2)*sin(theta)^2
 )SOURCE";
 
-static constexpr int    R_STEPS     = 201;   // [0..10]
-static constexpr int    PHI_STEPS   = 3600;  // [0..2*pi)
-static constexpr int    THETA_STEPS = 1801;  // [0..pi]
+static constexpr int    PHI_STEPS   = 7200;  // [0..2*pi)
+static constexpr int    THETA_STEPS = 3601;  // [0..pi]
 static constexpr double DIFF_STEP   = 0.001; // step for the calculation of the metric differentials
 
 static void printSection(StringView title) {
@@ -78,8 +77,9 @@ static void test() {
     std::atomic_int activeTasks;
 
     const auto run = [&](const double r) {
-        Program::VectorMemory memory = program.allocateVectorMemory();
-        Program::Vector       result[4][4]; // "volatile" to prevent optimizing it out
+        Executable<Program::Vector>   executable = program.makeVectorExecutable();
+        std::vector<Program::Vector>& memory     = executable.memory();
+        Program::Vector               result[4][4];
         memory[rAddress] = { r, r + DIFF_STEP, r, r };
         for (int pi = 0; pi < PHI_STEPS; ++pi) {
             const double phi   = double(pi) * 2.0 * std::numbers::pi_v<double> / double(PHI_STEPS);
@@ -87,7 +87,7 @@ static void test() {
             for (int ti = 0; ti < THETA_STEPS; ++ti) {
                 const double theta   = double(ti) * std::numbers::pi_v<double> / double(THETA_STEPS - 1);
                 memory[thetaAddress] = { theta, theta, theta, theta + DIFF_STEP };
-                program.run(memory);
+                executable.run();
                 for (int j = 0; j < 4; ++j) {
                     for (int i = 0; i < 4; ++i) {
                         result[j][i] = memory[resultAddress[j][i]];
@@ -133,23 +133,24 @@ static void test() {
         }
     };
 
-    const auto start = std::chrono::steady_clock::now();
+    const unsigned rSteps = 1 + 4 * std::thread::hardware_concurrency();
+    const auto     start  = std::chrono::steady_clock::now();
     {
         std::vector<std::thread> threads; // poor man's thread pool
-        threads.reserve(R_STEPS);
-        activeTasks = R_STEPS;
-        for (int ri = 0; ri < R_STEPS; ++ri) {
-            const double r = double(ri) * 10.0 / double(R_STEPS - 1);
+        threads.reserve(rSteps);
+        activeTasks = rSteps + 1; // +1 to prevent the actual printout
+        for (unsigned ri = 0; ri < rSteps; ++ri) {
+            const double r = double(ri) * 10.0 / double(rSteps - 1);
             threads.emplace_back(run, r);
         }
         for (std::thread& thread : threads) {
             thread.join();
         }
     }
-    const auto     stop    = std::chrono::steady_clock::now();
-    const double   seconds = std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count();
-    constexpr auto TENSOR_COUNT = int64_t(Program::Vector::SIZE) * R_STEPS * PHI_STEPS * THETA_STEPS;
-    String         speed        = std::format("{}", int64_t(double(TENSOR_COUNT) / seconds));
+    const auto   stop    = std::chrono::steady_clock::now();
+    const double seconds = std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count();
+    const auto   tensorCount = int64_t(Program::Vector::SIZE) * rSteps * PHI_STEPS * THETA_STEPS;
+    String       speed       = std::format("{}", int64_t(double(tensorCount) / seconds));
     for (StringPosition i = speed.size() - 3; i > 0 && i < speed.size(); i -= 3) {
         speed.insert(i, "'");
     }
