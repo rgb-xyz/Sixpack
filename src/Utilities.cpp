@@ -110,13 +110,15 @@ namespace {
             // >0 -- associative
             // <0 -- not associative
             if (const auto* binaryOp = dynamic_cast<const ast::BinaryOperator*>(&node)) {
+                // clang-format off
                 switch (binaryOp->type()) {
-                case ast::BinaryOperator::Type::CARET: return -1;
-                case ast::BinaryOperator::Type::SLASH: return -2;
-                case ast::BinaryOperator::Type::ASTERISK: return 2;
-                case ast::BinaryOperator::Type::MINUS: return -3;
-                case ast::BinaryOperator::Type::PLUS: return 3;
+                case ast::BinaryOperator::Type::CARET:    return -1;
+                case ast::BinaryOperator::Type::SLASH:    return -2;
+                case ast::BinaryOperator::Type::ASTERISK: return  2;
+                case ast::BinaryOperator::Type::MINUS:    return -3;
+                case ast::BinaryOperator::Type::PLUS:     return  3;
                 }
+                // clang-format on
             }
             return 0;
         }
@@ -476,7 +478,9 @@ void dumpProgram(const Program& program, std::ostream& output) {
         const Program::Address address = codeSection + i;
         String                 mnemonic, arguments;
         switch (code[i].opcode) {
-        case Program::Opcode::NOP: mnemonic = "nop"; break;
+        case Program::Opcode::NOP:
+            mnemonic = "nop";
+            break;
         case Program::Opcode::ADD:
             mnemonic  = "add";
             arguments = std::format("{}, {}", formatAddress(code[i].source), formatAddress(code[i].operand));
@@ -531,7 +535,9 @@ void dumpProgram(const Program& program, std::ostream& output) {
             mnemonic  = "sincos";
             arguments = std::format("{}, ${:+}", formatAddress(code[i].operand), code[i].target);
             break;
-        default: assert(false); mnemonic = "???";
+        default:
+            assert(false);
+            mnemonic = "???";
         }
         printout.addRow({ formatAddress(address), " " + mnemonic, arguments, formatComment(address) });
     }

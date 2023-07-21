@@ -88,14 +88,17 @@ namespace {
             node.operand().accept(*this);
             std::shared_ptr<asg::Term> term = popTerm();
             switch (node.type()) {
-            case ast::UnaryOperator::Type::PLUS: pushTerm(term); break;
+            case ast::UnaryOperator::Type::PLUS:
+                pushTerm(term);
+                break;
             case ast::UnaryOperator::Type::MINUS: {
                 // Note: Let's represent the negation as "-1*x" rather than as "0-x".
                 auto negation = std::make_shared<asg::Multiplication>(std::make_shared<asg::Constant>(-1.0));
                 negation->addPositiveTerm(std::move(term));
                 pushTerm(std::move(negation));
             } break;
-            default: throw Exception("Unhandled unary operator type.");
+            default:
+                throw Exception("Unhandled unary operator type.");
             }
             lastTerm()->setSourceNode(&node);
         }
@@ -133,7 +136,8 @@ namespace {
             case ast::BinaryOperator::Type::CARET:
                 pushTerm(std::make_shared<asg::Exponentiation>(std::move(leftTerm), std::move(rightTerm)));
                 break;
-            default: throw Exception("Unhandled binary operator type.");
+            default:
+                throw Exception("Unhandled binary operator type.");
             }
             lastTerm()->setSourceNode(&node);
         }

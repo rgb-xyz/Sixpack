@@ -37,6 +37,7 @@ Token Tokenizer::getNext() {
     };
 
     switch (startChar) {
+    // clang-format off
     case '=': return makeToken(TokenType::OPERATOR_EQUALS);
     case '+': return makeToken(TokenType::OPERATOR_PLUS);
     case '-': return makeToken(TokenType::OPERATOR_MINUS);
@@ -47,6 +48,7 @@ Token Tokenizer::getNext() {
     case ')': return makeToken(TokenType::PARENTHESIS_RIGHT);
     case '[': return makeToken(TokenType::BRACKET_LEFT);
     case ']': return makeToken(TokenType::BRACKET_RIGHT);
+    // clang-format on
     default:
         if (isDigit(startChar)) {
             const char* const            startChar = mInput.data() + startPosition;
